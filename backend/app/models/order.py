@@ -28,7 +28,8 @@ class Order(Base):
     shipping_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     total_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     shipping_address_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("addresses.id"), nullable=False)
-    stripe_payment_intent_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    payment_method: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    payment_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user: Mapped["User"] = relationship(back_populates="orders")

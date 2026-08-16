@@ -14,6 +14,14 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+const STATUS_BADGE: Record<string, string> = {
+  pending: "badge-warning",
+  paid: "badge-success",
+  shipped: "badge-brand",
+  delivered: "badge-success",
+  cancelled: "badge-danger",
+};
+
 export function OrdersPage() {
   const { isAuthenticated } = useAuth();
   const [orders, setOrders] = useState<OrderSummary[] | null>(null);
@@ -63,7 +71,7 @@ export function OrdersPage() {
               <span className="order-row-id">#{o.id.slice(0, 8)}</span>
               <span className="order-row-date">{new Date(o.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}</span>
             </div>
-            <span className="badge badge-success">{STATUS_LABEL[o.status] ?? o.status}</span>
+            <span className={`badge ${STATUS_BADGE[o.status] ?? "badge-brand"}`}>{STATUS_LABEL[o.status] ?? o.status}</span>
             <span>{o.item_count} items</span>
             <strong>{formatPrice(o.total_cents)}</strong>
           </Link>

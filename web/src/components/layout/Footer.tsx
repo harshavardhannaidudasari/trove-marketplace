@@ -10,7 +10,7 @@ export function Footer() {
             <span className="brand-mark">T</span>
             <span className="brand-word text-gradient">Trove</span>
           </div>
-          <p>A demo marketplace. Real backend, real checkout flow (Stripe test mode), zero real money.</p>
+          <p>A demo marketplace. Real backend, full checkout flow (simulated payment gateway), zero real money.</p>
         </div>
         <div className="footer-links">
           <div>

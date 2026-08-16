@@ -72,6 +72,75 @@
   margin-bottom: 8px;
 }
 
+.payment-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.payment-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.payment-tab:hover {
+  color: var(--text);
+}
+.payment-tab.active {
+  border-color: var(--violet);
+  color: var(--text);
+  background: rgba(139, 92, 246, 0.12);
+}
+.payment-tab-icon {
+  font-size: 15px;
+}
+
+.card-brand-tag {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--violet);
+}
+
+.payment-hint {
+  font-size: 12px;
+  color: var(--text-faint);
+  line-height: 1.6;
+}
+
+.wallet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.wallet-option {
+  padding: 16px 12px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.wallet-option:hover {
+  color: var(--text);
+}
+.wallet-option.selected {
+  border-color: var(--violet);
+  color: var(--text);
+  background: rgba(139, 92, 246, 0.12);
+}
+
 @media (max-width: 900px) {
   .checkout-layout {
     grid-template-columns: 1fr;

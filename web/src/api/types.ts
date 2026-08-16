@@ -110,6 +110,8 @@ export interface Order {
   tax_cents: number;
   shipping_cents: number;
   total_cents: number;
+  payment_method: string | null;
+  payment_reference: string | null;
   created_at: string;
   shipping_address: Address;
   items: OrderItem[];
@@ -123,9 +125,37 @@ export interface OrderSummary {
   item_count: number;
 }
 
-export interface CheckoutIntent {
-  client_secret: string;
-  order_preview_total_cents: number;
+export interface CheckoutPreview {
+  subtotal_cents: number;
+  tax_cents: number;
+  shipping_cents: number;
+  total_cents: number;
+}
+
+export type PaymentMethodType = "card" | "upi" | "wallet" | "cod";
+
+export interface CardPayload {
+  number: string;
+  expiry_month: number;
+  expiry_year: number;
+  cvv: string;
+  name_on_card: string;
+}
+
+export interface UpiPayload {
+  vpa: string;
+}
+
+export interface WalletPayload {
+  provider: string;
+}
+
+export interface CheckoutRequest {
+  shipping_address_id: string;
+  method: PaymentMethodType;
+  card?: CardPayload;
+  upi?: UpiPayload;
+  wallet?: WalletPayload;
 }
 
 export class ApiError extends Error {

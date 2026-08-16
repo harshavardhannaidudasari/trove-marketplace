@@ -7,7 +7,7 @@ const EMPTY: AddressInput = {
   city: "",
   state: "",
   postal_code: "",
-  country: "US",
+  country: "IN",
   is_default: true,
 };
 

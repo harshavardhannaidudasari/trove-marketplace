@@ -6,6 +6,14 @@ import type { Order } from "../api/types";
 import { formatPrice } from "../api/client";
 import "./orders.css";
 
+const STATUS_BADGE: Record<string, string> = {
+  pending: "badge-warning",
+  paid: "badge-success",
+  shipped: "badge-brand",
+  delivered: "badge-success",
+  cancelled: "badge-danger",
+};
+
 export function OrderDetailPage() {
   const { id = "" } = useParams();
   const [order, setOrder] = useState<Order | null>(null);
@@ -44,7 +52,7 @@ export function OrderDetailPage() {
               Placed {new Date(order.created_at).toLocaleDateString(undefined, { dateStyle: "long" })}
             </h1>
           </div>
-          <span className="badge badge-success" style={{ fontSize: 13, padding: "8px 16px" }}>
+          <span className={`badge ${STATUS_BADGE[order.status] ?? "badge-brand"}`} style={{ fontSize: 13, padding: "8px 16px" }}>
             {order.status}
           </span>
         </div>
@@ -79,6 +87,21 @@ export function OrderDetailPage() {
               <span>Total</span>
               <span>{formatPrice(order.total_cents)}</span>
             </div>
+
+            {order.payment_method && (
+              <>
+                <h3 style={{ marginTop: 24 }}>Payment</h3>
+                <p className="order-address">
+                  {order.payment_method}
+                  {order.payment_reference && (
+                    <>
+                      <br />
+                      <span style={{ opacity: 0.6, fontSize: 12 }}>Ref: {order.payment_reference}</span>
+                    </>
+                  )}
+                </p>
+              </>
+            )}
 
             <h3 style={{ marginTop: 24 }}>Shipping to</h3>
             <p className="order-address">

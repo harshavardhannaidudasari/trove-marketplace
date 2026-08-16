@@ -37,7 +37,7 @@ export function HomePage() {
               <br /> everyday things.
             </h1>
             <p className="hero-sub">
-              200+ curated products, real-time search, and checkout that just works. Trove is a full-stack demo
+              900+ curated products, real-time search, and checkout that just works. Trove is a full-stack demo
               marketplace built to feel like the real thing.
             </p>
             <div className="row gap-2 hero-cta">
@@ -50,11 +50,11 @@ export function HomePage() {
             </div>
             <div className="row gap-3 hero-stats">
               <div>
-                <strong>200+</strong>
+                <strong>900+</strong>
                 <span>products</span>
               </div>
               <div>
-                <strong>{categories.length || 10}</strong>
+                <strong>{categories.length || 16}</strong>
                 <span>categories</span>
               </div>
               <div>

@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Elements } from "@stripe/react-stripe-js";
 import { usersApi, ordersApi } from "../api/orders";
-import type { Address, AddressInput } from "../api/types";
+import type { Address, AddressInput, CheckoutPreview, CheckoutRequest } from "../api/types";
 import { ApiError } from "../api/types";
 import { formatPrice } from "../api/client";
-import { getStripe } from "../lib/stripe";
 import { useAuth } from "../hooks/useAuth";
 import { useCartStore } from "../store/cartStore";
 import { useToast } from "../components/ui/Toast";
@@ -13,7 +11,7 @@ import { AddressForm } from "../components/checkout/AddressForm";
 import { PaymentForm } from "../components/checkout/PaymentForm";
 import "./checkout.css";
 
-type Step = "loading" | "address" | "payment-error" | "payment";
+type Step = "loading" | "address" | "payment";
 
 export function CheckoutPage() {
   const navigate = useNavigate();
@@ -25,10 +23,8 @@ export function CheckoutPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [addingAddress, setAddingAddress] = useState(false);
-  const [creatingIntent, setCreatingIntent] = useState(false);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [previewTotal, setPreviewTotal] = useState<number | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [preview, setPreview] = useState<CheckoutPreview | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -55,31 +51,24 @@ export function CheckoutPage() {
 
   async function proceedToPayment() {
     if (!selectedAddressId) return;
-    setCreatingIntent(true);
-    setPaymentError(null);
+    setLoadingPreview(true);
     try {
-      const intent = await ordersApi.createIntent(selectedAddressId);
-      setClientSecret(intent.client_secret);
-      setPreviewTotal(intent.order_preview_total_cents);
+      const p = await ordersApi.preview(selectedAddressId);
+      setPreview(p);
       setStep("payment");
     } catch (e) {
-      setPaymentError(e instanceof ApiError ? e.message : "Could not start checkout");
-      setStep("payment-error");
+      push(e instanceof ApiError ? e.message : "Could not start checkout", "error");
     } finally {
-      setCreatingIntent(false);
+      setLoadingPreview(false);
     }
   }
 
-  async function handlePaid(paymentIntentId: string) {
+  async function handlePay(payment: Omit<CheckoutRequest, "shipping_address_id">) {
     if (!selectedAddressId) return;
-    try {
-      const order = await ordersApi.confirm(paymentIntentId, selectedAddressId);
-      await fetchCart();
-      push("Order placed! 🎉", "success");
-      navigate(`/orders/${order.id}`);
-    } catch (e) {
-      push(e instanceof Error ? e.message : "Could not finalize order", "error");
-    }
+    const order = await ordersApi.checkout({ shipping_address_id: selectedAddressId, ...payment });
+    await fetchCart();
+    push(payment.method === "cod" ? "Order placed! Pay on delivery." : "Payment successful — order placed! 🎉", "success");
+    navigate(`/orders/${order.id}`);
   }
 
   if (!isAuthenticated) {
@@ -121,7 +110,7 @@ export function CheckoutPage() {
                     onChange={() => {
                       setSelectedAddressId(a.id);
                       setStep("address");
-                      setClientSecret(null);
+                      setPreview(null);
                     }}
                   />
                   <span>
@@ -138,27 +127,15 @@ export function CheckoutPage() {
           {addresses.length === 0 && <AddressForm onSubmit={handleAddAddress} submitting={addingAddress} />}
 
           {addresses.length > 0 && step === "address" && (
-            <button className="btn btn-primary" disabled={!selectedAddressId || creatingIntent} onClick={proceedToPayment} style={{ marginTop: 16 }}>
-              {creatingIntent ? <span className="spinner" /> : "Continue to payment"}
+            <button className="btn btn-primary" disabled={!selectedAddressId || loadingPreview} onClick={proceedToPayment} style={{ marginTop: 16 }}>
+              {loadingPreview ? <span className="spinner" /> : "Continue to payment"}
             </button>
           )}
 
-          {step === "payment-error" && (
-            <div className="glass payment-error-panel">
-              <h3>Payment service unavailable</h3>
-              <p>{paymentError}</p>
-              <button className="btn btn-outline" style={{ marginTop: 14 }} onClick={proceedToPayment}>
-                Try again
-              </button>
-            </div>
-          )}
-
-          {step === "payment" && clientSecret && (
+          {step === "payment" && preview && (
             <div style={{ marginTop: 24 }}>
               <h2 className="checkout-step-title">2. Payment</h2>
-              <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: "night", labels: "floating" } }}>
-                <PaymentForm total={formatPrice(previewTotal ?? 0)} onPaid={handlePaid} />
-              </Elements>
+              <PaymentForm total={formatPrice(preview.total_cents)} onSubmit={handlePay} />
             </div>
           )}
         </div>
@@ -173,11 +150,28 @@ export function CheckoutPage() {
               <span>{formatPrice(item.line_total_cents)}</span>
             </div>
           ))}
-          <div className="row cart-summary-line" style={{ marginTop: 12, fontWeight: 700 }}>
+          <div className="row cart-summary-line" style={{ marginTop: 12 }}>
             <span>Subtotal</span>
             <span>{formatPrice(cart.subtotal_cents)}</span>
           </div>
-          <p className="cart-summary-note">Tax and shipping are calculated by the server at checkout.</p>
+          {preview ? (
+            <>
+              <div className="row cart-summary-line">
+                <span>GST (18%)</span>
+                <span>{formatPrice(preview.tax_cents)}</span>
+              </div>
+              <div className="row cart-summary-line">
+                <span>Shipping</span>
+                <span>{preview.shipping_cents === 0 ? "FREE" : formatPrice(preview.shipping_cents)}</span>
+              </div>
+              <div className="row cart-summary-line" style={{ marginTop: 8, fontWeight: 700 }}>
+                <span>Total</span>
+                <span>{formatPrice(preview.total_cents)}</span>
+              </div>
+            </>
+          ) : (
+            <p className="cart-summary-note">Tax and shipping are calculated at the next step.</p>
+          )}
         </div>
       </div>
     </div>

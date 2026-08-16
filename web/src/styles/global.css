@@ -340,6 +340,12 @@ select.input {
   border-color: rgba(248, 113, 113, 0.25);
 }
 
+.badge-warning {
+  background: rgba(251, 191, 36, 0.14);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.25);
+}
+
 /* ---------- skeleton ---------- */
 
 .skeleton {

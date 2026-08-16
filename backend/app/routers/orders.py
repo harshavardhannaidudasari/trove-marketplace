@@ -1,25 +1,19 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.deps import get_current_user
 from app.db.session import get_db
-from app.models import Address, CartItem, Order, OrderItem, OrderStatus, Product, User
-from app.schemas.order import (
-    CheckoutConfirmRequest,
-    CheckoutIntentRequest,
-    CheckoutIntentResponse,
-    OrderOut,
-    OrderSummary,
-)
-from app.services import stripe_service
+from app.models import Address, CartItem, Order, OrderItem, OrderStatus, User
+from app.schemas.order import CheckoutRequest, OrderOut, OrderSummary
+from app.services import mock_payment_service
 
 router = APIRouter(prefix="/api/v1/orders", tags=["orders"])
 
-FREE_SHIPPING_THRESHOLD_CENTS = 5000
-FLAT_SHIPPING_CENTS = 599
-TAX_RATE = 0.08
+FREE_SHIPPING_THRESHOLD_CENTS = 50000
+FLAT_SHIPPING_CENTS = 4900
+TAX_RATE = 0.18  # GST
 
 
 def _compute_totals(subtotal_cents: int) -> tuple[int, int, int]:
@@ -40,41 +34,49 @@ def _cart_subtotal(db: Session, user_id: uuid.UUID) -> tuple[list[CartItem], int
     return items, subtotal
 
 
-@router.post("/checkout/intent", response_model=CheckoutIntentResponse)
-def create_checkout_intent(payload: CheckoutIntentRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    address = db.get(Address, payload.shipping_address_id)
+@router.get("/checkout/preview")
+def checkout_preview(shipping_address_id: uuid.UUID, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    address = db.get(Address, shipping_address_id)
     if address is None or address.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Shipping address not found")
-
     _, subtotal = _cart_subtotal(db, current_user.id)
-    _, _, total = _compute_totals(subtotal)
-
-    intent = stripe_service.create_payment_intent(total, "usd", order_id=str(uuid.uuid4()))
-    return CheckoutIntentResponse(client_secret=intent.client_secret, order_preview_total_cents=total)
+    tax, shipping, total = _compute_totals(subtotal)
+    return {"subtotal_cents": subtotal, "tax_cents": tax, "shipping_cents": shipping, "total_cents": total}
 
 
-@router.post("/checkout/confirm", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
-def confirm_checkout(payload: CheckoutConfirmRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@router.post("/checkout", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
+def checkout(payload: CheckoutRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     address = db.get(Address, payload.shipping_address_id)
     if address is None or address.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Shipping address not found")
-
-    intent = stripe_service.retrieve_payment_intent(payload.payment_intent_id)
-    if intent.status not in ("succeeded", "processing"):
-        raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, f"Payment not completed (status: {intent.status})")
 
     cart_items, subtotal = _cart_subtotal(db, current_user.id)
     tax, shipping, total = _compute_totals(subtotal)
 
+    if payload.method == "card":
+        c = payload.card
+        result = mock_payment_service.process_card_payment(c.number, c.expiry_month, c.expiry_year, c.cvv, c.name_on_card)
+    elif payload.method == "upi":
+        result = mock_payment_service.process_upi_payment(payload.upi.vpa)
+    elif payload.method == "wallet":
+        result = mock_payment_service.process_wallet_payment(payload.wallet.provider)
+    else:
+        result = mock_payment_service.process_cod()
+
+    if not result.success:
+        raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, result.failure_reason or "Payment failed")
+
+    order_status = OrderStatus.pending if payload.method == "cod" else OrderStatus.paid
     order = Order(
         user_id=current_user.id,
-        status=OrderStatus.paid if intent.status == "succeeded" else OrderStatus.pending,
+        status=order_status,
         subtotal_cents=subtotal,
         tax_cents=tax,
         shipping_cents=shipping,
         total_cents=total,
         shipping_address_id=address.id,
-        stripe_payment_intent_id=intent.id,
+        payment_method=result.method_label,
+        payment_reference=result.reference,
     )
     db.add(order)
     db.flush()

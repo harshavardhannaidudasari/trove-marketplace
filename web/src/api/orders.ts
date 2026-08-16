@@ -1,5 +1,5 @@
 import { api } from "./client";
-import type { Address, AddressInput, CheckoutIntent, Order, OrderSummary } from "./types";
+import type { Address, AddressInput, CheckoutPreview, CheckoutRequest, Order, OrderSummary } from "./types";
 
 export const usersApi = {
   addresses: () => api.get<Address[]>("/users/me/addresses", true),
@@ -9,11 +9,10 @@ export const usersApi = {
 };
 
 export const ordersApi = {
-  createIntent: (shipping_address_id: string) =>
-    api.post<CheckoutIntent>("/orders/checkout/intent", { shipping_address_id }, true),
+  preview: (shipping_address_id: string) =>
+    api.get<CheckoutPreview>(`/orders/checkout/preview?shipping_address_id=${shipping_address_id}`, true),
 
-  confirm: (payment_intent_id: string, shipping_address_id: string) =>
-    api.post<Order>("/orders/checkout/confirm", { payment_intent_id, shipping_address_id }, true),
+  checkout: (payload: CheckoutRequest) => api.post<Order>("/orders/checkout", payload, true),
 
   list: () => api.get<OrderSummary[]>("/orders", true),
 
