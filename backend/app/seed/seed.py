@@ -6,16 +6,26 @@ Images come from LoremFlickr (loremflickr.com/{w}/{h}/{keyword}) - each
 product template carries an explicit search keyword (e.g. "Air Fryer 4L"
 -> "air-fryer") so the photo actually matches what the product is, not
 just a random deterministic photo. `lock=` pins a specific matching photo
-per image slot so re-seeding is stable. Product names, brands, and copy
-are original / fictional - never scraped or copied from any real
-retailer. Prices are in INR paise (price_cents).
+per image slot so re-seeding is stable. Because LoremFlickr's CDN
+occasionally serves a corrupted cached JPEG for a given lock value, every
+candidate image is downloaded and decode-verified at seed time
+(resolve_image_urls) and automatically retried against a nearby lock on
+failure, so no broken image ever gets persisted. Product names, brands,
+and copy are original / fictional - never scraped or copied from any
+real retailer. Prices are in INR paise (price_cents).
 """
 
 import argparse
 import random
 import sys
+from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
 from pathlib import Path
+from urllib.error import URLError
 from urllib.parse import quote
+from urllib.request import urlopen
+
+from PIL import Image, UnidentifiedImageError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -328,7 +338,7 @@ TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = 
             "Car Accessories": [
                 ("Car Phone Mount", "dashboard,phone"),
                 ("Car Vacuum Cleaner", "car-vacuum"),
-                ("Microfiber Car Cleaning Cloth Set", "microfiber-cloth"),
+                ("Microfiber Car Cleaning Cloth Set", "microfiber,cleaning"),
                 ("Dashboard Camera", "dash-cam"),
             ],
             "Bike Accessories": [
@@ -402,6 +412,49 @@ def slugify(text: str) -> str:
     return "-".join("".join(c if c.isalnum() or c.isspace() else " " for c in text.lower()).split())
 
 
+_GRAY_FILL_FRACTION_LIMIT = 0.05  # legit photos measured ~0.0%; corrupted decodes measured ~42%
+
+
+def _is_decodable_image(data: bytes) -> bool:
+    """LoremFlickr's CDN occasionally serves a cached derivative that is a
+    structurally valid JPEG (decodes without error) but whose actual scan data is
+    corrupted - libjpeg fills the undecoded region with flat mid-gray (128, 128, 128)
+    instead of raising, so a bare decode check doesn't catch it. Flag images where a
+    large fraction of pixels are exactly that fallback-fill gray as corrupted too."""
+    try:
+        img = Image.open(BytesIO(data))
+        img.load()
+        if img.width <= 0 or img.height <= 0:
+            return False
+    except (UnidentifiedImageError, OSError):
+        return False
+
+    rgb = img.convert("RGB")
+    pixels = rgb.getdata()
+    total = rgb.width * rgb.height
+    gray_fill = sum(1 for p in pixels if p == (128, 128, 128))
+    return (gray_fill / total) <= _GRAY_FILL_FRACTION_LIMIT
+
+
+def _resolve_image_url(keyword_path: str, base_lock: int, max_attempts: int = 5) -> str:
+    """Find a lock value for this keyword whose image actually decodes, retrying
+    against different points in the tag's photo pool on corruption."""
+    last_url = f"https://loremflickr.com/900/900/{keyword_path}?lock={base_lock}"
+    for attempt in range(max_attempts):
+        lock = base_lock + attempt * 97
+        url = f"https://loremflickr.com/900/900/{keyword_path}?lock={lock}"
+        last_url = url
+        try:
+            with urlopen(url, timeout=15) as resp:
+                data = resp.read()
+        except URLError:
+            continue
+        if _is_decodable_image(data):
+            return url
+    print(f"WARNING: could not find a decodable image for {keyword_path!r} after {max_attempts} attempts, using {last_url}")
+    return last_url
+
+
 def build_categories(db) -> dict[str, list[Category]]:
     """Returns {parent_name: [leaf Category,...]} and stashes price range on each leaf via closure map."""
     leaf_map: dict[str, list[Category]] = {}
@@ -428,6 +481,11 @@ def build_products(db, categories: dict[str, list[Category]], count: int) -> lis
         child_names = list(children.keys())
         for leaf, child_name in zip(leaves, child_names):
             pool.append((leaf, price_range, children[child_name]))
+
+    # (product, sort_order, keyword_path, base_lock, title) - resolved to verified
+    # image URLs in one batch after all products exist, so corrupted CDN cache
+    # entries can be retried without slowing down the per-product loop.
+    pending_images: list[tuple[Product, int, str, int, str]] = []
 
     i = 0
     while len(products) < count:
@@ -464,15 +522,23 @@ def build_products(db, categories: dict[str, list[Category]], count: int) -> lis
         db.flush()
         keyword_path = quote(image_keyword, safe=",")
         for img_idx in range(4):
-            db.add(
-                ProductImage(
-                    product_id=product.id,
-                    url=f"https://loremflickr.com/900/900/{keyword_path}?lock={i * 10 + img_idx}",
-                    sort_order=img_idx,
-                    alt_text=title,
-                )
-            )
+            pending_images.append((product, img_idx, keyword_path, i * 10 + img_idx, title))
         products.append(product)
+
+    print(f"Verifying {len(pending_images)} product images against LoremFlickr (retrying any corrupted ones)...")
+    with ThreadPoolExecutor(max_workers=24) as pool_exec:
+        resolved_urls = list(
+            pool_exec.map(lambda spec: _resolve_image_url(spec[2], spec[3]), pending_images)
+        )
+    for (product, img_idx, _keyword_path, _base_lock, title), url in zip(pending_images, resolved_urls):
+        db.add(
+            ProductImage(
+                product_id=product.id,
+                url=url,
+                sort_order=img_idx,
+                alt_text=title,
+            )
+        )
     return products
 
 
