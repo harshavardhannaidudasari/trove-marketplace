@@ -18,12 +18,27 @@
   top: calc(var(--header-h) + 24px);
 }
 
+.category-nav-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.category-nav-children {
+  display: flex;
+  flex-direction: column;
+}
+
 .category-nav-item {
+  display: block;
+  width: 100%;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 600;
   color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: background 0.15s ease, color 0.15s ease;
 }
 .category-nav-item:hover {
