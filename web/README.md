@@ -49,22 +49,17 @@ Test card: `4242 4242 4242 4242`, any future expiry, any CVC.
 
 ## What's verified
 
-The Chrome extension wasn't connected during this build, so **the actual rendered UI has not been
-visually driven in a browser** — that's a real gap, not a formality, and it's worth doing a pass
-in a browser before treating this as fully proven. What *was* verified for real:
-
 | Check | Result |
 |---|---|
 | `tsc -b` (typecheck, whole project) | ✅ clean |
 | `npm run build` (production bundle) | ✅ builds, 482 modules, no errors |
 | `npm run lint` (oxlint) | ✅ only one harmless Fast-Refresh warning (Toast.tsx exporting both a component and a hook) |
-| Every API call the frontend makes, exercised directly against the live backend via curl with the exact request shape the client sends | ✅ — CORS preflight from `localhost:5173` allowed; form-urlencoded login; `/auth/me`; `/cart` get/add/clear; `/orders` list (demo account's real paid order); `/users/me/addresses`; checkout intent's real `502` when Stripe isn't configured, message matches what the Checkout page renders |
+| Every API call the frontend makes, exercised directly against the live backend via curl with the exact request shape the client sends | ✅ — CORS preflight from `localhost:5173` allowed; form-urlencoded login; `/auth/me`; `/cart` get/add/clear; `/orders` list; `/users/me/addresses`; checkout intent's real `502` when Stripe isn't configured |
+| **Real browser walkthrough** (Chrome, driven live against the running backend) | ✅ — home page (hero, category tiles, trending/new grids, all animations settle correctly), browse (sidebar categories, price/sort filters, pagination), product detail (gallery, add-to-cart), sign-out add-to-cart → toast + redirect to `/login?next=...` → sign-in → redirected back → add-to-cart succeeds with animated cart badge, cart page (qty stepper, remove), checkout (address auto-selected → "Payment service unavailable" panel renders the backend's exact `502` message, since no Stripe key is configured in this dev env), order history (shows the seeded demo order), order detail (items/subtotal/tax/shipping/total, shipping address) |
 
-**Not yet verified:** actual visual rendering, animation smoothness, click/hover/tilt interactions,
-responsive layout at real viewport sizes, and the full Stripe Elements payment form (needs a real
-`pk_test_...`/`sk_test_...` key pair, which this dev environment doesn't have configured). Run
-`npm run dev`, open http://localhost:5173, and click through — that's the one step this session
-couldn't do.
+**Not yet verified:** the full Stripe Elements payment form itself (needs a real
+`pk_test_...`/`sk_test_...` key pair, which this dev environment doesn't have configured) and
+responsive layout at narrow/mobile viewport widths.
 
 ## Tech
 
