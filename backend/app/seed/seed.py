@@ -41,9 +41,9 @@ TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = 
                 ("Budget Smartphone (64GB)", "smartphone"),
             ],
             "Phone Cases & Covers": [
-                ("Silicone Phone Case", "phone-case"),
-                ("Rugged Armor Case", "phone-case"),
-                ("Leather Flip Cover", "phone-case"),
+                ("Silicone Phone Case", "iphone,case"),
+                ("Rugged Armor Case", "iphone,case"),
+                ("Leather Flip Cover", "iphone,case"),
             ],
             "Chargers & Cables": [
                 ("65W Fast Charger", "phone-charger"),
@@ -51,8 +51,8 @@ TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = 
                 ("Wireless Charging Pad", "wireless-charger"),
             ],
             "Power Banks": [
-                ("10000mAh Power Bank", "power-bank"),
-                ("20000mAh Fast-Charge Power Bank", "power-bank"),
+                ("10000mAh Power Bank", "power-bank,charger"),
+                ("20000mAh Fast-Charge Power Bank", "power-bank,charger"),
             ],
             "Smartwatches": [
                 ("Fitness Smartwatch", "smartwatch"),
@@ -69,14 +69,14 @@ TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = 
                 ("Ultra-thin Business Laptop", "laptop"),
             ],
             "Monitors": [
-                ("24-inch Full HD Monitor", "computer-monitor"),
-                ("27-inch QHD IPS Monitor", "computer-monitor"),
-                ("Curved Gaming Monitor", "curved-monitor"),
+                ("24-inch Full HD Monitor", "computer-monitor,electronics"),
+                ("27-inch QHD IPS Monitor", "computer-monitor,electronics"),
+                ("Curved Gaming Monitor", "curved-monitor,electronics"),
             ],
             "Keyboards & Mice": [
-                ("Wireless Mechanical Keyboard", "keyboard"),
-                ("Ergonomic Wireless Mouse", "computer-mouse"),
-                ("RGB Gaming Keyboard", "gaming-keyboard"),
+                ("Wireless Mechanical Keyboard", "mechanical-keyboard"),
+                ("Ergonomic Wireless Mouse", "wireless-mouse"),
+                ("RGB Gaming Keyboard", "mechanical-keyboard"),
             ],
             "Storage": [
                 ("1TB Portable SSD", "external-ssd"),
@@ -104,12 +104,12 @@ TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = 
                 ("Smart Speaker with Voice Assistant", "smart-speaker"),
             ],
             "Televisions": [
-                ("43-inch 4K Smart TV", "television"),
-                ("55-inch 4K Smart TV", "television"),
-                ("32-inch HD Ready TV", "television"),
+                ("43-inch 4K Smart TV", "smart-tv"),
+                ("55-inch 4K Smart TV", "smart-tv"),
+                ("32-inch HD Ready TV", "smart-tv"),
             ],
             "Cameras": [
-                ("Mirrorless Camera with 18-55mm Lens", "mirrorless-camera"),
+                ("Mirrorless Camera with 18-55mm Lens", "mirrorless,camera"),
                 ("Action Camera 4K", "action-camera"),
                 ("Instant Print Camera", "instant-camera"),
             ],
@@ -121,7 +121,7 @@ TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = 
             "Cookware": [
                 ("Non-Stick Cookware Set", "cookware"),
                 ("Stainless Steel Kadai", "wok"),
-                ("Cast Iron Skillet", "cast-iron-skillet"),
+                ("Cast Iron Skillet", "cast-iron,skillet"),
             ],
             "Small Appliances": [
                 ("Air Fryer 4L", "air-fryer"),
@@ -130,10 +130,10 @@ TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = 
                 ("Induction Cooktop", "induction-cooktop"),
             ],
             "Furniture": [
-                ("3-Seater Fabric Sofa", "sofa"),
-                ("Study Table with Drawer", "study-table"),
-                ("Bookshelf (5-Tier)", "bookshelf"),
-                ("Ergonomic Office Chair", "office-chair"),
+                ("3-Seater Fabric Sofa", "sofa,furniture"),
+                ("Study Table with Drawer", "study-table,furniture"),
+                ("Bookshelf (5-Tier)", "bookshelf,furniture"),
+                ("Ergonomic Office Chair", "office-chair,furniture"),
             ],
             "Bedding": [
                 ("Cotton Bedsheet Set (Queen)", "bedsheet"),
@@ -141,9 +141,9 @@ TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = 
                 ("Quilted Comforter", "comforter"),
             ],
             "Home Decor": [
-                ("Wall Clock", "wall-clock"),
+                ("Wall Clock", "wall-clock,home"),
                 ("LED String Lights", "string-lights"),
-                ("Decorative Wall Art Frame", "wall-art"),
+                ("Decorative Wall Art Frame", "wall-art,home"),
             ],
         },
     ),
@@ -156,7 +156,7 @@ TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = 
                 ("Graphic Print T-Shirt", "graphic-tshirt"),
             ],
             "Men's Shirts": [
-                ("Formal Cotton Shirt", "mens-dress-shirt"),
+                ("Formal Cotton Shirt", "collared-shirt"),
                 ("Checked Casual Shirt", "flannel-shirt"),
                 ("Linen Shirt", "linen-shirt"),
             ],
@@ -167,7 +167,7 @@ TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = 
             ],
             "Men's Footwear": [
                 ("Running Shoes", "running-shoes"),
-                ("Leather Formal Shoes", "mens-dress-shoes"),
+                ("Leather Formal Shoes", "formal-shoes"),
                 ("Casual Sneakers", "sneakers"),
                 ("Sandals", "sandals"),
             ],
@@ -326,7 +326,7 @@ TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = 
         (149, 29999),
         {
             "Car Accessories": [
-                ("Car Phone Mount", "car-phone-mount"),
+                ("Car Phone Mount", "dashboard,phone"),
                 ("Car Vacuum Cleaner", "car-vacuum"),
                 ("Microfiber Car Cleaning Cloth Set", "microfiber-cloth"),
                 ("Dashboard Camera", "dash-cam"),
@@ -334,7 +334,7 @@ TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = 
             "Bike Accessories": [
                 ("Bike Riding Gloves", "motorcycle-gloves"),
                 ("Motorcycle Helmet", "motorcycle-helmet"),
-                ("Bike Phone Holder", "bike-phone-mount"),
+                ("Bike Phone Holder", "bike-mount"),
             ],
         },
     ),
@@ -348,7 +348,7 @@ TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = 
             ],
             "Cat Supplies": [
                 ("Cat Litter (5L)", "cat-litter"),
-                ("Cat Scratching Post", "cat-scratching-post"),
+                ("Cat Scratching Post", "scratching-post,cat"),
                 ("Dry Cat Food (1.5kg)", "cat-food"),
             ],
         },
@@ -376,7 +376,7 @@ TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = 
         (79, 6999),
         {
             "Health Devices": [
-                ("Digital Blood Pressure Monitor", "blood-pressure-monitor"),
+                ("Digital Blood Pressure Monitor", "blood-pressure,monitor"),
                 ("Digital Thermometer", "thermometer"),
                 ("Pulse Oximeter", "pulse-oximeter"),
             ],
@@ -462,7 +462,7 @@ def build_products(db, categories: dict[str, list[Category]], count: int) -> lis
         )
         db.add(product)
         db.flush()
-        keyword_path = quote(image_keyword)
+        keyword_path = quote(image_keyword, safe=",")
         for img_idx in range(4):
             db.add(
                 ProductImage(
