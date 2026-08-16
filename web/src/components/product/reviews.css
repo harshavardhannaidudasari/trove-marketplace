@@ -1,0 +1,37 @@
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.review-item {
+  padding: 20px;
+}
+
+.review-author {
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.review-title {
+  margin-top: 10px;
+  font-size: 15px;
+  font-family: var(--font-body);
+}
+
+.review-body {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.review-empty {
+  color: var(--text-faint);
+  padding: 20px 0;
+}
+
+.review-form {
+  padding: 24px;
+  max-width: 480px;
+}

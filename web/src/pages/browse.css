@@ -1,0 +1,14 @@
+.browse-page {
+  padding: 40px 0 100px;
+}
+
+.browse-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 32px;
+}
+
+.browse-heading {
+  font-size: 26px;
+  margin-bottom: 20px;
+}
