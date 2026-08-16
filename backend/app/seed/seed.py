@@ -2,16 +2,20 @@
 
 Run with: python -m app.seed.seed [--reset] [--count 900]
 
-Images come from Picsum Photos (picsum.photos/seed/{id}/...) - real
-photography, deterministic per product id, zero licensing risk. Product
-names, brands, and copy are original / fictional - never scraped or
-copied from any real retailer. Prices are in INR paise (price_cents).
+Images come from LoremFlickr (loremflickr.com/{w}/{h}/{keyword}) - each
+product template carries an explicit search keyword (e.g. "Air Fryer 4L"
+-> "air-fryer") so the photo actually matches what the product is, not
+just a random deterministic photo. `lock=` pins a specific matching photo
+per image slot so re-seeding is stable. Product names, brands, and copy
+are original / fictional - never scraped or copied from any real
+retailer. Prices are in INR paise (price_cents).
 """
 
 import argparse
 import random
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -26,141 +30,361 @@ fake = Faker()
 Faker.seed(42)
 random.seed(42)
 
-# parent category -> (rupee price range, [ (subcategory, [product-type templates]) ])
-TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[str]]]] = {
+# parent category -> (rupee price range, [ (subcategory, [(product-type template, image search keyword)]) ])
+TAXONOMY: dict[str, tuple[tuple[int, int], dict[str, list[tuple[str, str]]]]] = {
     "Mobiles & Accessories": (
         (799, 149999),
         {
-            "Smartphones": ["Smartphone (128GB)", "Smartphone (256GB, 5G)", "Budget Smartphone (64GB)"],
-            "Phone Cases & Covers": ["Silicone Phone Case", "Rugged Armor Case", "Leather Flip Cover"],
-            "Chargers & Cables": ["65W Fast Charger", "USB-C to USB-C Cable (1m)", "Wireless Charging Pad"],
-            "Power Banks": ["10000mAh Power Bank", "20000mAh Fast-Charge Power Bank"],
-            "Smartwatches": ["Fitness Smartwatch", "AMOLED Smartwatch with Calling"],
+            "Smartphones": [
+                ("Smartphone (128GB)", "smartphone"),
+                ("Smartphone (256GB, 5G)", "smartphone"),
+                ("Budget Smartphone (64GB)", "smartphone"),
+            ],
+            "Phone Cases & Covers": [
+                ("Silicone Phone Case", "phone-case"),
+                ("Rugged Armor Case", "phone-case"),
+                ("Leather Flip Cover", "phone-case"),
+            ],
+            "Chargers & Cables": [
+                ("65W Fast Charger", "phone-charger"),
+                ("USB-C to USB-C Cable (1m)", "usb-cable"),
+                ("Wireless Charging Pad", "wireless-charger"),
+            ],
+            "Power Banks": [
+                ("10000mAh Power Bank", "power-bank"),
+                ("20000mAh Fast-Charge Power Bank", "power-bank"),
+            ],
+            "Smartwatches": [
+                ("Fitness Smartwatch", "smartwatch"),
+                ("AMOLED Smartwatch with Calling", "smartwatch"),
+            ],
         },
     ),
     "Computers & Laptops": (
         (999, 199999),
         {
-            "Laptops": ["14-inch Everyday Laptop", "15.6-inch Gaming Laptop", "Ultra-thin Business Laptop"],
-            "Monitors": ["24-inch Full HD Monitor", "27-inch QHD IPS Monitor", "Curved Gaming Monitor"],
-            "Keyboards & Mice": ["Wireless Mechanical Keyboard", "Ergonomic Wireless Mouse", "RGB Gaming Keyboard"],
-            "Storage": ["1TB Portable SSD", "512GB NVMe Internal SSD", "32GB USB Flash Drive"],
-            "Laptop Bags": ["15.6-inch Laptop Backpack", "Padded Laptop Sleeve"],
+            "Laptops": [
+                ("14-inch Everyday Laptop", "laptop"),
+                ("15.6-inch Gaming Laptop", "gaming-laptop"),
+                ("Ultra-thin Business Laptop", "laptop"),
+            ],
+            "Monitors": [
+                ("24-inch Full HD Monitor", "computer-monitor"),
+                ("27-inch QHD IPS Monitor", "computer-monitor"),
+                ("Curved Gaming Monitor", "curved-monitor"),
+            ],
+            "Keyboards & Mice": [
+                ("Wireless Mechanical Keyboard", "keyboard"),
+                ("Ergonomic Wireless Mouse", "computer-mouse"),
+                ("RGB Gaming Keyboard", "gaming-keyboard"),
+            ],
+            "Storage": [
+                ("1TB Portable SSD", "external-ssd"),
+                ("512GB NVMe Internal SSD", "ssd"),
+                ("32GB USB Flash Drive", "usb-flash-drive"),
+            ],
+            "Laptop Bags": [
+                ("15.6-inch Laptop Backpack", "laptop-backpack"),
+                ("Padded Laptop Sleeve", "laptop-sleeve"),
+            ],
         },
     ),
     "TV, Audio & Cameras": (
         (499, 89999),
         {
-            "Headphones": ["Wireless Bluetooth Headphones", "Over-Ear ANC Headphones", "True Wireless Earbuds", "Gaming Headset"],
-            "Speakers": ["Portable Bluetooth Speaker", "Home Theatre Soundbar", "Smart Speaker with Voice Assistant"],
-            "Televisions": ["43-inch 4K Smart TV", "55-inch 4K Smart TV", "32-inch HD Ready TV"],
-            "Cameras": ["Mirrorless Camera with 18-55mm Lens", "Action Camera 4K", "Instant Print Camera"],
+            "Headphones": [
+                ("Wireless Bluetooth Headphones", "headphones"),
+                ("Over-Ear ANC Headphones", "headphones"),
+                ("True Wireless Earbuds", "earbuds"),
+                ("Gaming Headset", "gaming-headset"),
+            ],
+            "Speakers": [
+                ("Portable Bluetooth Speaker", "bluetooth-speaker"),
+                ("Home Theatre Soundbar", "soundbar"),
+                ("Smart Speaker with Voice Assistant", "smart-speaker"),
+            ],
+            "Televisions": [
+                ("43-inch 4K Smart TV", "television"),
+                ("55-inch 4K Smart TV", "television"),
+                ("32-inch HD Ready TV", "television"),
+            ],
+            "Cameras": [
+                ("Mirrorless Camera with 18-55mm Lens", "mirrorless-camera"),
+                ("Action Camera 4K", "action-camera"),
+                ("Instant Print Camera", "instant-camera"),
+            ],
         },
     ),
     "Home & Kitchen": (
         (149, 49999),
         {
-            "Cookware": ["Non-Stick Cookware Set", "Stainless Steel Kadai", "Cast Iron Skillet"],
-            "Small Appliances": ["Air Fryer 4L", "Mixer Grinder 750W", "Electric Kettle 1.5L", "Induction Cooktop"],
-            "Furniture": ["3-Seater Fabric Sofa", "Study Table with Drawer", "Bookshelf (5-Tier)", "Ergonomic Office Chair"],
-            "Bedding": ["Cotton Bedsheet Set (Queen)", "Memory Foam Pillow", "Quilted Comforter"],
-            "Home Decor": ["Wall Clock", "LED String Lights", "Decorative Wall Art Frame"],
+            "Cookware": [
+                ("Non-Stick Cookware Set", "cookware"),
+                ("Stainless Steel Kadai", "wok"),
+                ("Cast Iron Skillet", "cast-iron-skillet"),
+            ],
+            "Small Appliances": [
+                ("Air Fryer 4L", "air-fryer"),
+                ("Mixer Grinder 750W", "blender"),
+                ("Electric Kettle 1.5L", "electric-kettle"),
+                ("Induction Cooktop", "induction-cooktop"),
+            ],
+            "Furniture": [
+                ("3-Seater Fabric Sofa", "sofa"),
+                ("Study Table with Drawer", "study-table"),
+                ("Bookshelf (5-Tier)", "bookshelf"),
+                ("Ergonomic Office Chair", "office-chair"),
+            ],
+            "Bedding": [
+                ("Cotton Bedsheet Set (Queen)", "bedsheet"),
+                ("Memory Foam Pillow", "pillow"),
+                ("Quilted Comforter", "comforter"),
+            ],
+            "Home Decor": [
+                ("Wall Clock", "wall-clock"),
+                ("LED String Lights", "string-lights"),
+                ("Decorative Wall Art Frame", "wall-art"),
+            ],
         },
     ),
     "Fashion - Men": (
         (299, 7999),
         {
-            "Men's T-Shirts": ["Cotton Crew-Neck T-Shirt", "Polo T-Shirt", "Graphic Print T-Shirt"],
-            "Men's Shirts": ["Formal Cotton Shirt", "Checked Casual Shirt", "Linen Shirt"],
-            "Men's Jeans & Trousers": ["Slim Fit Jeans", "Chino Trousers", "Track Pants"],
-            "Men's Footwear": ["Running Shoes", "Leather Formal Shoes", "Casual Sneakers", "Sandals"],
+            "Men's T-Shirts": [
+                ("Cotton Crew-Neck T-Shirt", "mens-tshirt"),
+                ("Polo T-Shirt", "polo-shirt"),
+                ("Graphic Print T-Shirt", "graphic-tshirt"),
+            ],
+            "Men's Shirts": [
+                ("Formal Cotton Shirt", "mens-dress-shirt"),
+                ("Checked Casual Shirt", "flannel-shirt"),
+                ("Linen Shirt", "linen-shirt"),
+            ],
+            "Men's Jeans & Trousers": [
+                ("Slim Fit Jeans", "mens-jeans"),
+                ("Chino Trousers", "chino-pants"),
+                ("Track Pants", "track-pants"),
+            ],
+            "Men's Footwear": [
+                ("Running Shoes", "running-shoes"),
+                ("Leather Formal Shoes", "mens-dress-shoes"),
+                ("Casual Sneakers", "sneakers"),
+                ("Sandals", "sandals"),
+            ],
         },
     ),
     "Fashion - Women": (
         (299, 8999),
         {
-            "Women's Kurtas & Ethnic": ["Cotton A-Line Kurta", "Printed Anarkali Kurta", "Embroidered Saree"],
-            "Women's Western Wear": ["Floral Maxi Dress", "High-Waist Jeans", "Casual Top"],
-            "Women's Footwear": ["Block Heel Sandals", "Ballet Flats", "Running Shoes for Women"],
-            "Handbags": ["Tote Handbag", "Sling Bag", "Laptop Tote for Women"],
+            "Women's Kurtas & Ethnic": [
+                ("Cotton A-Line Kurta", "kurta"),
+                ("Printed Anarkali Kurta", "anarkali"),
+                ("Embroidered Saree", "saree"),
+            ],
+            "Women's Western Wear": [
+                ("Floral Maxi Dress", "maxi-dress"),
+                ("High-Waist Jeans", "womens-jeans"),
+                ("Casual Top", "womens-top"),
+            ],
+            "Women's Footwear": [
+                ("Block Heel Sandals", "heel-sandals"),
+                ("Ballet Flats", "ballet-flats"),
+                ("Running Shoes for Women", "running-shoes"),
+            ],
+            "Handbags": [
+                ("Tote Handbag", "tote-bag"),
+                ("Sling Bag", "sling-bag"),
+                ("Laptop Tote for Women", "laptop-tote"),
+            ],
         },
     ),
     "Fashion - Kids": (
         (199, 2999),
         {
-            "Kids' Clothing": ["Kids Cotton T-Shirt Set", "Kids Party Dress", "Kids Winter Jacket"],
-            "Kids' Footwear": ["Kids Sports Shoes", "Kids Sandals"],
+            "Kids' Clothing": [
+                ("Kids Cotton T-Shirt Set", "kids-tshirt"),
+                ("Kids Party Dress", "kids-dress"),
+                ("Kids Winter Jacket", "kids-jacket"),
+            ],
+            "Kids' Footwear": [
+                ("Kids Sports Shoes", "kids-shoes"),
+                ("Kids Sandals", "kids-sandals"),
+            ],
         },
     ),
     "Books": (
         (99, 1999),
         {
-            "Fiction": ["Mystery Thriller Novel", "Contemporary Fiction Novel", "Fantasy Adventure Novel"],
-            "Non-Fiction": ["Self-Help & Personal Growth Book", "Popular Science Book", "Biography"],
-            "Children's Books": ["Illustrated Picture Book", "Children's Story Collection"],
-            "Academic & Reference": ["Competitive Exam Guide", "Programming Reference Book"],
+            "Fiction": [
+                ("Mystery Thriller Novel", "book"),
+                ("Contemporary Fiction Novel", "book"),
+                ("Fantasy Adventure Novel", "fantasy-book"),
+            ],
+            "Non-Fiction": [
+                ("Self-Help & Personal Growth Book", "book"),
+                ("Popular Science Book", "book"),
+                ("Biography", "book"),
+            ],
+            "Children's Books": [
+                ("Illustrated Picture Book", "childrens-book"),
+                ("Children's Story Collection", "childrens-book"),
+            ],
+            "Academic & Reference": [
+                ("Competitive Exam Guide", "textbook"),
+                ("Programming Reference Book", "programming-book"),
+            ],
         },
     ),
     "Beauty & Personal Care": (
         (99, 4999),
         {
-            "Skincare": ["Vitamin C Face Serum", "Sunscreen SPF 50", "Hydrating Face Moisturizer", "Face Wash"],
-            "Haircare": ["Anti-Dandruff Shampoo", "Argan Hair Oil", "Hair Straightener"],
-            "Fragrance": ["Eau de Parfum for Men", "Eau de Parfum for Women", "Deodorant Body Spray"],
-            "Grooming": ["Electric Trimmer", "Electric Shaver", "Manicure Kit"],
+            "Skincare": [
+                ("Vitamin C Face Serum", "face-serum"),
+                ("Sunscreen SPF 50", "sunscreen"),
+                ("Hydrating Face Moisturizer", "moisturizer"),
+                ("Face Wash", "face-wash"),
+            ],
+            "Haircare": [
+                ("Anti-Dandruff Shampoo", "shampoo"),
+                ("Argan Hair Oil", "hair-oil"),
+                ("Hair Straightener", "hair-straightener"),
+            ],
+            "Fragrance": [
+                ("Eau de Parfum for Men", "perfume"),
+                ("Eau de Parfum for Women", "perfume"),
+                ("Deodorant Body Spray", "deodorant"),
+            ],
+            "Grooming": [
+                ("Electric Trimmer", "beard-trimmer"),
+                ("Electric Shaver", "electric-shaver"),
+                ("Manicure Kit", "manicure-set"),
+            ],
         },
     ),
     "Sports & Fitness": (
         (199, 24999),
         {
-            "Fitness Equipment": ["Adjustable Dumbbell Set", "Yoga Mat (6mm)", "Resistance Bands Set", "Treadmill"],
-            "Cycling": ["Hybrid Bicycle (26-inch)", "Cycling Helmet", "Bicycle Lock"],
-            "Outdoor & Camping": ["2-Person Camping Tent", "Sleeping Bag", "Trekking Backpack 40L"],
-            "Sportswear": ["Running Shoes (Unisex)", "Dry-Fit Sports T-Shirt"],
+            "Fitness Equipment": [
+                ("Adjustable Dumbbell Set", "dumbbells"),
+                ("Yoga Mat (6mm)", "yoga-mat"),
+                ("Resistance Bands Set", "resistance-bands"),
+                ("Treadmill", "treadmill"),
+            ],
+            "Cycling": [
+                ("Hybrid Bicycle (26-inch)", "bicycle"),
+                ("Cycling Helmet", "cycling-helmet"),
+                ("Bicycle Lock", "bike-lock"),
+            ],
+            "Outdoor & Camping": [
+                ("2-Person Camping Tent", "camping-tent"),
+                ("Sleeping Bag", "sleeping-bag"),
+                ("Trekking Backpack 40L", "trekking-backpack"),
+            ],
+            "Sportswear": [
+                ("Running Shoes (Unisex)", "running-shoes"),
+                ("Dry-Fit Sports T-Shirt", "sports-tshirt"),
+            ],
         },
     ),
     "Toys, Baby & Kids": (
         (149, 9999),
         {
-            "Toys & Games": ["Building Blocks Set (200 pcs)", "Remote Control Car", "Board Game", "Soft Plush Toy"],
-            "Baby Care": ["Baby Diaper Pack (Size M)", "Baby Stroller", "Baby Feeding Bottle Set"],
+            "Toys & Games": [
+                ("Building Blocks Set (200 pcs)", "building-blocks"),
+                ("Remote Control Car", "rc-car"),
+                ("Board Game", "board-game"),
+                ("Soft Plush Toy", "plush-toy"),
+            ],
+            "Baby Care": [
+                ("Baby Diaper Pack (Size M)", "diapers"),
+                ("Baby Stroller", "baby-stroller"),
+                ("Baby Feeding Bottle Set", "baby-bottle"),
+            ],
         },
     ),
     "Grocery & Gourmet": (
         (29, 1999),
         {
-            "Snacks": ["Roasted Makhana Pack", "Multigrain Chips", "Protein Bar Pack (6)"],
-            "Beverages": ["Instant Coffee Jar", "Green Tea Bags (100)", "Fruit Juice Pack (6x200ml)"],
-            "Pantry Staples": ["Basmati Rice (5kg)", "Cold-Pressed Groundnut Oil (1L)", "Organic Honey (500g)"],
+            "Snacks": [
+                ("Roasted Makhana Pack", "snacks"),
+                ("Multigrain Chips", "potato-chips"),
+                ("Protein Bar Pack (6)", "protein-bar"),
+            ],
+            "Beverages": [
+                ("Instant Coffee Jar", "instant-coffee"),
+                ("Green Tea Bags (100)", "green-tea"),
+                ("Fruit Juice Pack (6x200ml)", "fruit-juice"),
+            ],
+            "Pantry Staples": [
+                ("Basmati Rice (5kg)", "rice"),
+                ("Cold-Pressed Groundnut Oil (1L)", "cooking-oil"),
+                ("Organic Honey (500g)", "honey"),
+            ],
         },
     ),
     "Automotive": (
         (149, 29999),
         {
-            "Car Accessories": ["Car Phone Mount", "Car Vacuum Cleaner", "Microfiber Car Cleaning Cloth Set", "Dashboard Camera"],
-            "Bike Accessories": ["Bike Riding Gloves", "Motorcycle Helmet", "Bike Phone Holder"],
+            "Car Accessories": [
+                ("Car Phone Mount", "car-phone-mount"),
+                ("Car Vacuum Cleaner", "car-vacuum"),
+                ("Microfiber Car Cleaning Cloth Set", "microfiber-cloth"),
+                ("Dashboard Camera", "dash-cam"),
+            ],
+            "Bike Accessories": [
+                ("Bike Riding Gloves", "motorcycle-gloves"),
+                ("Motorcycle Helmet", "motorcycle-helmet"),
+                ("Bike Phone Holder", "bike-phone-mount"),
+            ],
         },
     ),
     "Pet Supplies": (
         (99, 4999),
         {
-            "Dog Supplies": ["Dry Dog Food (3kg)", "Dog Chew Toy", "Adjustable Dog Leash"],
-            "Cat Supplies": ["Cat Litter (5L)", "Cat Scratching Post", "Dry Cat Food (1.5kg)"],
+            "Dog Supplies": [
+                ("Dry Dog Food (3kg)", "dog-food"),
+                ("Dog Chew Toy", "dog-toy"),
+                ("Adjustable Dog Leash", "dog-leash"),
+            ],
+            "Cat Supplies": [
+                ("Cat Litter (5L)", "cat-litter"),
+                ("Cat Scratching Post", "cat-scratching-post"),
+                ("Dry Cat Food (1.5kg)", "cat-food"),
+            ],
         },
     ),
     "Office Products": (
         (49, 14999),
         {
-            "Stationery": ["Gel Pen Set (10 pcs)", "Spiral Notebook Pack", "Sticky Notes Set"],
-            "Desk Accessories": ["Desk Organizer", "LED Desk Lamp", "Monitor Stand Riser"],
-            "Printers & Ink": ["All-in-One Inkjet Printer", "Printer Ink Cartridge"],
+            "Stationery": [
+                ("Gel Pen Set (10 pcs)", "gel-pens"),
+                ("Spiral Notebook Pack", "notebook"),
+                ("Sticky Notes Set", "sticky-notes"),
+            ],
+            "Desk Accessories": [
+                ("Desk Organizer", "desk-organizer"),
+                ("LED Desk Lamp", "desk-lamp"),
+                ("Monitor Stand Riser", "monitor-stand"),
+            ],
+            "Printers & Ink": [
+                ("All-in-One Inkjet Printer", "inkjet-printer"),
+                ("Printer Ink Cartridge", "ink-cartridge"),
+            ],
         },
     ),
     "Health & Household": (
         (79, 6999),
         {
-            "Health Devices": ["Digital Blood Pressure Monitor", "Digital Thermometer", "Pulse Oximeter"],
-            "Household Supplies": ["Multi-Surface Cleaner (1L)", "Laundry Detergent (2kg)", "Air Purifier"],
+            "Health Devices": [
+                ("Digital Blood Pressure Monitor", "blood-pressure-monitor"),
+                ("Digital Thermometer", "thermometer"),
+                ("Pulse Oximeter", "pulse-oximeter"),
+            ],
+            "Household Supplies": [
+                ("Multi-Surface Cleaner (1L)", "spray-bottle"),
+                ("Laundry Detergent (2kg)", "laundry-detergent"),
+                ("Air Purifier", "air-purifier"),
+            ],
         },
     ),
 }
@@ -210,7 +434,7 @@ def build_products(db, categories: dict[str, list[Category]], count: int) -> lis
         leaf, (lo, hi), templates = pool[i % len(pool)]
         i += 1
         brand = random.choice(BRANDS)
-        template = random.choice(templates)
+        template, image_keyword = random.choice(templates)
         variant = random.choice(COLORS) if random.random() < 0.5 else None
         title = f"{brand} {template}" + (f" - {variant}" if variant else "")
         price_rupees = random.randint(lo, hi)
@@ -238,11 +462,12 @@ def build_products(db, categories: dict[str, list[Category]], count: int) -> lis
         )
         db.add(product)
         db.flush()
+        keyword_path = quote(image_keyword)
         for img_idx in range(4):
             db.add(
                 ProductImage(
                     product_id=product.id,
-                    url=f"https://picsum.photos/seed/trove-{i}-{img_idx}/900/900",
+                    url=f"https://loremflickr.com/900/900/{keyword_path}?lock={i * 10 + img_idx}",
                     sort_order=img_idx,
                     alt_text=title,
                 )
